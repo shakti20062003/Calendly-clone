@@ -16,16 +16,16 @@ const PORT = process.env.PORT || 5000;
 
 const transporter = nodemailer.createTransport({
   host: 'smtp-relay.brevo.com',
-  port: 587,
-  secure: false,
+  port: 2525,         
+  secure: false,       
   auth: {
-    user: 'apikey',                    
-    pass: process.env.BREVO_API_KEY    
+    user: 'apikey',
+    pass: process.env.BREVO_API_KEY,
   },
   connectionTimeout: 30000,
   socketTimeout: 30000,
-  greetingTimeout: 30000,
 });
+
 
 transporter.verify((error) => {
   if (error) {
