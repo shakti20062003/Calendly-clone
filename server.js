@@ -13,12 +13,21 @@ const PORT = process.env.PORT || 5000;
 // ==================== EMAIL CONFIGURATION (GMAIL) ====================
 
 // Configure the transporter
+// Configure the transporter
 const transporter = nodemailer.createTransport({
   service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 465,              // Use 465 for Production/Cloud
+  secure: true,           // TRUE for port 465
   auth: {
-    user: process.env.GMAIL_USER, // Check .env.local
-    pass: process.env.GMAIL_PASS  // Check .env.local
-  }
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_PASS
+  },
+  // 🔧 THE MAGIC FIXES:
+  family: 4,              // Force IPv4 (Prevents IPv6 timeouts on Render)
+  connectionTimeout: 10000, 
+  greetingTimeout: 5000,
+  socketTimeout: 10000
 });
 
 // Email sending function
