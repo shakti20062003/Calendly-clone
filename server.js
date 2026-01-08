@@ -10,6 +10,7 @@ const nodemailer = require('nodemailer'); // 🆕 Switched to Nodemailer
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+
 // ==================== EMAIL CONFIGURATION (GMAIL) ====================
 
 // Configure the transporter for Brevo (Reliable)
@@ -37,9 +38,11 @@ transporter.verify((error) => {
 
 
 // Email sending function
+const axios = require('axios');
+
 async function sendBookingConfirmation(booking, eventType) {
-  if (!process.env.BREVO_SMTP_KEY) {
-    console.log('⚠️ Email skipped - BREVO_SMTP_KEY not set');
+  if (!process.env.BREVO_API_KEY) {
+    console.log('⚠️ Email skipped - BREVO_API_KEY not set');
     return;
   }
 
@@ -57,27 +60,45 @@ async function sendBookingConfirmation(booking, eventType) {
       hour12: true,
     });
 
-    await transporter.sendMail({
-      from: '"Calendly Clone" <shaktiprasadbarik0490@gmail.com>', // ✅ VERIFIED IN BREVO
-      to: booking.invitee_email,
-      subject: `✅ Booking Confirmed: ${eventType.name}`,
-      html: `
-        <h2>🎉 Your Meeting is Confirmed!</h2>
-        <p><strong>Event:</strong> ${eventType.name}</p>
-        <p><strong>Date:</strong> ${formattedDate}</p>
-        <p><strong>Time:</strong> ${formattedTime}</p>
-        <p><strong>Duration:</strong> ${eventType.duration} minutes</p>
-      `,
-    });
+    await axios.post(
+      'https://api.brevo.com/v3/smtp/email',
+      {
+        sender: {
+          name: 'Calendly Clone',
+          email: 'shaktiprasadbarik0490@gmail.com', // ✅ VERIFIED
+        },
+        to: [{ email: booking.invitee_email }],
+        subject: `✅ Booking Confirmed: ${eventType.name}`,
+        htmlContent: `
+          <h2>🎉 Your Meeting is Confirmed!</h2>
+          <p><strong>Event:</strong> ${eventType.name}</p>
+          <p><strong>Date:</strong> ${formattedDate}</p>
+          <p><strong>Time:</strong> ${formattedTime}</p>
+          <p><strong>Duration:</strong> ${eventType.duration} minutes</p>
+        `,
+      },
+      {
+        headers: {
+          'api-key': process.env.BREVO_API_KEY,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
 
-    console.log('✅ Confirmation email sent to:', booking.invitee_email);
+    console.log('✅ Brevo API confirmation email sent to:', booking.invitee_email);
   } catch (error) {
-    console.error('❌ Email sending failed:', error.message);
+    console.error(
+      '❌ Brevo API email failed:',
+      error.response?.data || error.message
+    );
   }
 }
 
 async function sendCancellationEmail(booking, eventType, reason) {
-  if (!process.env.BREVO_SMTP_KEY) return;
+  if (!process.env.BREVO_API_KEY) {
+    console.log('⚠️ Email skipped - BREVO_API_KEY not set');
+    return;
+  }
 
   try {
     const startDate = new Date(booking.start_time);
@@ -88,23 +109,39 @@ async function sendCancellationEmail(booking, eventType, reason) {
       day: 'numeric',
     });
 
-    await transporter.sendMail({
-      from: '"Calendly Clone" <shaktiprasadbarik0490@gmail.com>', // ✅ SAME VERIFIED EMAIL
-      to: booking.invitee_email,
-      subject: `❌ Meeting Cancelled: ${eventType.name}`,
-      html: `
-        <h2>Meeting Cancelled</h2>
-        <p><strong>Event:</strong> ${eventType.name}</p>
-        <p><strong>Date:</strong> ${formattedDate}</p>
-        ${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ''}
-      `,
-    });
+    await axios.post(
+      'https://api.brevo.com/v3/smtp/email',
+      {
+        sender: {
+          name: 'Calendly Clone',
+          email: 'shaktiprasadbarik0490@gmail.com', // ✅ VERIFIED SENDER
+        },
+        to: [{ email: booking.invitee_email }],
+        subject: `❌ Meeting Cancelled: ${eventType.name}`,
+        htmlContent: `
+          <h2>Meeting Cancelled</h2>
+          <p><strong>Event:</strong> ${eventType.name}</p>
+          <p><strong>Date:</strong> ${formattedDate}</p>
+          ${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ''}
+        `,
+      },
+      {
+        headers: {
+          'api-key': process.env.BREVO_API_KEY,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
 
-    console.log('✅ Cancellation email sent to:', booking.invitee_email);
+    console.log('✅ Brevo API cancellation email sent to:', booking.invitee_email);
   } catch (error) {
-    console.error('❌ Email sending failed:', error.message);
+    console.error(
+      '❌ Brevo API cancellation email failed:',
+      error.response?.data || error.message
+    );
   }
 }
+
 
 
 // Add global error handlers
