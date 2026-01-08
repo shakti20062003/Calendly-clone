@@ -12,22 +12,18 @@ const PORT = process.env.PORT || 5000;
 
 // ==================== EMAIL CONFIGURATION (GMAIL) ====================
 
-// Configure the transporter
-// Configure the transporter
+// Configure the transporter for Brevo (Reliable)
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  host: 'smtp.gmail.com',
-  port: 465,              // Use 465 for Production/Cloud
-  secure: true,           // TRUE for port 465
+  host: 'smtp-relay.brevo.com', // Brevo's SMTP Server
+  port: 587,                    // Standard secure port
+  secure: false,                // False for 587
   auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_PASS
+    user: process.env.GMAIL_USER, // Your Brevo Login Email (from Render env)
+    pass: process.env.GMAIL_PASS  // Your Brevo SMTP Key (from Render env)
   },
-  // 🔧 THE MAGIC FIXES:
-  family: 4,              // Force IPv4 (Prevents IPv6 timeouts on Render)
-  connectionTimeout: 10000, 
-  greetingTimeout: 5000,
-  socketTimeout: 10000
+  // We can keep these timeouts just to be safe, but Brevo is fast.
+  connectionTimeout: 10000,
+  greetingTimeout: 5000
 });
 
 // Email sending function
