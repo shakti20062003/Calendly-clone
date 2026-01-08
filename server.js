@@ -13,162 +13,99 @@ const PORT = process.env.PORT || 5000;
 // ==================== EMAIL CONFIGURATION (GMAIL) ====================
 
 // Configure the transporter for Brevo (Reliable)
+
 const transporter = nodemailer.createTransport({
-  host: 'smtp-relay.brevo.com', // Brevo's SMTP Server
-  port: 587,                    // Standard secure port
-  secure: false,                // False for 587
+  host: 'smtp-relay.brevo.com',
+  port: 587,
+  secure: false,
   auth: {
-    user: process.env.GMAIL_USER, // Your Brevo Login Email (from Render env)
-    pass: process.env.GMAIL_PASS  // Your Brevo SMTP Key (from Render env)
+    user: 'apikey',                    
+    pass: process.env.BREVO_API_KEY    
   },
-  // We can keep these timeouts just to be safe, but Brevo is fast.
-  connectionTimeout: 10000,
-  greetingTimeout: 5000
+  connectionTimeout: 30000,
+  socketTimeout: 30000,
+  greetingTimeout: 30000,
 });
+
+transporter.verify((error) => {
+  if (error) {
+    console.error('❌ SMTP FAILED:', error);
+  } else {
+    console.log('✅ SMTP READY (Brevo connected)');
+  }
+});
+
 
 // Email sending function
 async function sendBookingConfirmation(booking, eventType) {
-  // Simple check to ensure credentials exist
-  if (!process.env.GMAIL_USER || !process.env.GMAIL_PASS) {
-    console.log('⚠️ Email not sent - GMAIL_USER or GMAIL_PASS not configured');
+  if (!process.env.BREVO_API_KEY) {
+    console.log('⚠️ Email skipped - BREVO_API_KEY not set');
     return;
   }
-  
+
   try {
     const startDate = new Date(booking.start_time);
-    const formattedDate = startDate.toLocaleDateString('en-US', { 
-      weekday: 'long', 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
+    const formattedDate = startDate.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
     });
-    const formattedTime = startDate.toLocaleTimeString('en-US', { 
-      hour: 'numeric', 
+    const formattedTime = startDate.toLocaleTimeString('en-US', {
+      hour: 'numeric',
       minute: '2-digit',
-      hour12: true 
+      hour12: true,
     });
 
-    const info = await transporter.sendMail({
-      from: `"Calendly Clone" <${process.env.GMAIL_USER}>`,
+    await transporter.sendMail({
+      from: '"Calendly Clone" <your_verified_email@gmail.com>', // ✅ VERIFIED IN BREVO
       to: booking.invitee_email,
       subject: `✅ Booking Confirmed: ${eventType.name}`,
       html: `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background-color: #4F46E5; color: white; padding: 20px; border-radius: 8px 8px 0 0; }
-            .content { background-color: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
-            .info-box { background-color: white; padding: 20px; border-radius: 8px; margin: 20px 0; }
-            .info-item { margin: 10px 0; }
-            .label { font-weight: bold; color: #4F46E5; }
-            .footer { text-align: center; margin-top: 20px; color: #666; font-size: 14px; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1 style="margin: 0;">🎉 Your Meeting is Confirmed!</h1>
-            </div>
-            <div class="content">
-              <p>Hi ${booking.invitee_name},</p>
-              <p>Your meeting has been successfully scheduled!</p>
-              
-              <div class="info-box">
-                <div class="info-item">
-                  <span class="label">📅 Event:</span> ${eventType.name}
-                </div>
-                <div class="info-item">
-                  <span class="label">📆 Date:</span> ${formattedDate}
-                </div>
-                <div class="info-item">
-                  <span class="label">🕐 Time:</span> ${formattedTime}
-                </div>
-                <div class="info-item">
-                  <span class="label">⏱️ Duration:</span> ${eventType.duration} minutes
-                </div>
-              </div>
-              
-              <p>We're looking forward to meeting with you!</p>
-              <p style="color: #666; font-size: 14px; margin-top: 30px;">
-                <em>If you need to cancel or reschedule, please contact us as soon as possible.</em>
-              </p>
-            </div>
-            <div class="footer">
-              <p>Powered by Calendly Clone</p>
-            </div>
-          </div>
-        </body>
-        </html>
-      `
+        <h2>🎉 Your Meeting is Confirmed!</h2>
+        <p><strong>Event:</strong> ${eventType.name}</p>
+        <p><strong>Date:</strong> ${formattedDate}</p>
+        <p><strong>Time:</strong> ${formattedTime}</p>
+        <p><strong>Duration:</strong> ${eventType.duration} minutes</p>
+      `,
     });
-    
-    console.log('✅ Confirmation email sent to:', booking.invitee_email);
-    console.log('📨 Message ID:', info.messageId);
 
+    console.log('✅ Confirmation email sent to:', booking.invitee_email);
   } catch (error) {
     console.error('❌ Email sending failed:', error.message);
   }
 }
 
 async function sendCancellationEmail(booking, eventType, reason) {
-  if (!process.env.GMAIL_USER) return;
-  
+  if (!process.env.BREVO_API_KEY) return;
+
   try {
     const startDate = new Date(booking.start_time);
-    const formattedDate = startDate.toLocaleDateString('en-US', { 
-      weekday: 'long', 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
+    const formattedDate = startDate.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
     });
 
     await transporter.sendMail({
-      from: `"Calendly Clone" <${process.env.GMAIL_USER}>`,
+      from: '"Calendly Clone" <your_verified_email@gmail.com>', // ✅ SAME VERIFIED EMAIL
       to: booking.invitee_email,
       subject: `❌ Meeting Cancelled: ${eventType.name}`,
       html: `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background-color: #EF4444; color: white; padding: 20px; border-radius: 8px 8px 0 0; }
-            .content { background-color: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
-            .info-box { background-color: white; padding: 20px; border-radius: 8px; margin: 20px 0; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1 style="margin: 0;">Meeting Cancelled</h1>
-            </div>
-            <div class="content">
-              <p>Hi ${booking.invitee_name},</p>
-              <p>Your meeting has been cancelled.</p>
-              
-              <div class="info-box">
-                <p><strong>Event:</strong> ${eventType.name}</p>
-                <p><strong>Date:</strong> ${formattedDate}</p>
-                ${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ''}
-              </div>
-              
-              <p>If you'd like to reschedule, please visit our booking page.</p>
-            </div>
-          </div>
-        </body>
-        </html>
-      `
+        <h2>Meeting Cancelled</h2>
+        <p><strong>Event:</strong> ${eventType.name}</p>
+        <p><strong>Date:</strong> ${formattedDate}</p>
+        ${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ''}
+      `,
     });
-    
+
     console.log('✅ Cancellation email sent to:', booking.invitee_email);
   } catch (error) {
     console.error('❌ Email sending failed:', error.message);
   }
 }
+
 
 // Add global error handlers
 process.on('uncaughtException', (error) => {
@@ -651,8 +588,13 @@ app.patch('/api/bookings/:id/cancel', async (req, res) => {
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', mode: 'supabase-rest', mail: 'gmail-nodemailer' });
+  res.json({
+    status: 'ok',
+    mail: 'brevo-smtp',
+    env: !!process.env.BREVO_API_KEY,
+  });
 });
+
 
 app.listen(PORT, () => {
   console.log('\n✅ Server is running!');
