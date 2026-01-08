@@ -20,7 +20,7 @@ const transporter = nodemailer.createTransport({
   secure: false,       
   auth: {
     user: 'apikey',
-    pass: process.env.BREVO_API_KEY,
+    pass: process.env.BREVO_SMTP_KEY,
   },
   connectionTimeout: 30000,
   socketTimeout: 30000,
@@ -38,8 +38,8 @@ transporter.verify((error) => {
 
 // Email sending function
 async function sendBookingConfirmation(booking, eventType) {
-  if (!process.env.BREVO_API_KEY) {
-    console.log('⚠️ Email skipped - BREVO_API_KEY not set');
+  if (!process.env.BREVO_SMTP_KEY) {
+    console.log('⚠️ Email skipped - BREVO_SMTP_KEY not set');
     return;
   }
 
@@ -58,7 +58,7 @@ async function sendBookingConfirmation(booking, eventType) {
     });
 
     await transporter.sendMail({
-      from: '"Calendly Clone" <your_verified_email@gmail.com>', // ✅ VERIFIED IN BREVO
+      from: '"Calendly Clone" <shaktiprasadbarik0490@gmail.com>', // ✅ VERIFIED IN BREVO
       to: booking.invitee_email,
       subject: `✅ Booking Confirmed: ${eventType.name}`,
       html: `
@@ -77,7 +77,7 @@ async function sendBookingConfirmation(booking, eventType) {
 }
 
 async function sendCancellationEmail(booking, eventType, reason) {
-  if (!process.env.BREVO_API_KEY) return;
+  if (!process.env.BREVO_SMTP_KEY) return;
 
   try {
     const startDate = new Date(booking.start_time);
@@ -89,7 +89,7 @@ async function sendCancellationEmail(booking, eventType, reason) {
     });
 
     await transporter.sendMail({
-      from: '"Calendly Clone" <your_verified_email@gmail.com>', // ✅ SAME VERIFIED EMAIL
+      from: '"Calendly Clone" <shaktiprasadbarik0490@gmail.com>', // ✅ SAME VERIFIED EMAIL
       to: booking.invitee_email,
       subject: `❌ Meeting Cancelled: ${eventType.name}`,
       html: `
@@ -591,7 +591,7 @@ app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
     mail: 'brevo-smtp',
-    env: !!process.env.BREVO_API_KEY,
+    env: !!process.env.BREVO_SMTP_KEY,
   });
 });
 
