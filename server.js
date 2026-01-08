@@ -556,7 +556,7 @@ app.post('/api/bookings', async (req, res) => {
     } else {
         console.log("📧 Attempting to send email to:", inviteeEmail);
         // Call the email function
-        await sendBookingConfirmation(data, eventType);
+        sendBookingConfirmation(data, eventType).catch(err => console.error("Background Email Error:", err));
     }
     
     res.status(201).json(data);
@@ -633,7 +633,7 @@ app.patch('/api/bookings/:id/cancel', async (req, res) => {
     // 3. Send Cancellation Email
     if (booking && eventType) {
         console.log("📧 Sending Cancellation email to:", booking.invitee_email);
-        await sendCancellationEmail(booking, eventType, reason);
+        sendCancellationEmail(booking, eventType, reason).catch(err => console.error("Background Email Error:", err));
     }
 
     res.json({ message: 'Booking cancelled successfully' });
