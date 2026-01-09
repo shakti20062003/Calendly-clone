@@ -28,7 +28,6 @@ export default function HomePage() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<EventType | null>(null);
 
-
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -47,7 +46,7 @@ export default function HomePage() {
       setEventTypes(response.data);
     } catch (error) {
       console.error('Error fetching event types:', error);
-      toast.success('Event type created successfully');
+      toast.error('Failed to load event types');
     } finally {
       setLoading(false);
     }
@@ -117,12 +116,12 @@ export default function HomePage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8">
+    <div className="max-w-5xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-8">
       <Toaster />
       
-      <div className="mb-8">
-        <div className="flex justify-between items-center mb-2">
-          <h1 className="text-3xl font-bold text-gray-900">My Event Types</h1>
+      <div className="mb-6 sm:mb-8">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 gap-3">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">My Event Types</h1>
           
           <Dialog open={isCreateOpen} onOpenChange={(open) => {
             setIsCreateOpen(open);
@@ -132,20 +131,20 @@ export default function HomePage() {
             }
           }}>
             <DialogTrigger asChild>
-              <Button className="bg-blue-600 hover:bg-blue-700">
+              <Button className="bg-blue-600 hover:bg-blue-700 text-sm sm:text-base w-full sm:w-auto">
                 <Plus className="w-4 h-4 mr-2" />
                 New Event Type
               </Button>
             </DialogTrigger>
             
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>{editingEvent ? 'Edit Event Type' : 'Create Event Type'}</DialogTitle>
+                <DialogTitle className="text-base sm:text-lg">{editingEvent ? 'Edit Event Type' : 'Create Event Type'}</DialogTitle>
               </DialogHeader>
               
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
                 <div>
-                  <Label htmlFor="name">Event Name</Label>
+                  <Label htmlFor="name" className="text-sm">Event Name</Label>
                   <Input
                     id="name"
                     value={formData.name}
@@ -157,21 +156,23 @@ export default function HomePage() {
                     }}
                     placeholder="15 Minute Meeting"
                     required
+                    className="text-sm"
                   />
                 </div>
                 
                 <div>
-                  <Label htmlFor="description">Description (optional)</Label>
+                  <Label htmlFor="description" className="text-sm">Description (optional)</Label>
                   <Input
                     id="description"
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     placeholder="Quick consultation"
+                    className="text-sm"
                   />
                 </div>
                 
                 <div>
-                  <Label htmlFor="duration">Duration (minutes)</Label>
+                  <Label htmlFor="duration" className="text-sm">Duration (minutes)</Label>
                   <Input
                     id="duration"
                     type="number"
@@ -180,47 +181,49 @@ export default function HomePage() {
                     value={formData.duration}
                     onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) })}
                     required
+                    className="text-sm"
                   />
                 </div>
                 
                 <div>
-                  <Label htmlFor="slug">URL Slug</Label>
+                  <Label htmlFor="slug" className="text-sm">URL Slug</Label>
                   <Input
                     id="slug"
                     value={formData.slug}
                     onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
                     placeholder="15min"
                     required
+                    className="text-sm"
                   />
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-[10px] sm:text-xs text-gray-500 mt-1 break-all">
                     {window.location.origin}/{formData.slug}
                   </p>
                 </div>
                 
                 <div>
-                  <Label htmlFor="color">Color</Label>
+                  <Label htmlFor="color" className="text-sm">Color</Label>
                   <div className="flex items-center space-x-2">
                     <input
                       id="color"
                       type="color"
                       value={formData.color}
                       onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                      className="h-10 w-20 rounded border border-gray-300"
+                      className="h-9 sm:h-10 w-16 sm:w-20 rounded border border-gray-300"
                       aria-label="Event color picker"
                     />
                     <Input
                       value={formData.color}
                       onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                      className="flex-1"
+                      className="flex-1 text-sm"
                     />
                   </div>
                 </div>
                 
-                <div className="flex justify-end space-x-2 pt-4">
-                  <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>
+                <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2 pt-2 sm:pt-4">
+                  <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)} className="text-sm w-full sm:w-auto">
                     Cancel
                   </Button>
-                  <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
+                  <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-sm w-full sm:w-auto">
                     {editingEvent ? 'Update' : 'Create'}
                   </Button>
                 </div>
@@ -229,53 +232,53 @@ export default function HomePage() {
           </Dialog>
         </div>
         
-        <p className="text-gray-600">Create and manage your event types</p>
+        <p className="text-sm sm:text-base text-gray-600">Create and manage your event types</p>
       </div>
 
       {eventTypes.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-lg border-2 border-dashed border-gray-300">
-          <Clock className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No event types yet</h3>
-          <p className="text-gray-600 mb-4">Get started by creating your first event type</p>
-          <Button onClick={() => setIsCreateOpen(true)} className="bg-blue-600 hover:bg-blue-700">
+        <div className="text-center py-8 sm:py-12 bg-white rounded-lg border-2 border-dashed border-gray-300">
+          <Clock className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-3 sm:mb-4" />
+          <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">No event types yet</h3>
+          <p className="text-sm sm:text-base text-gray-600 mb-4">Get started by creating your first event type</p>
+          <Button onClick={() => setIsCreateOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-sm sm:text-base">
             <Plus className="w-4 h-4 mr-2" />
             Create Event Type
           </Button>
         </div>
       ) : (
-        <div className="grid gap-4">
+        <div className="grid gap-3 sm:gap-4">
           {eventTypes.map((event) => (
             <div
               key={event.id}
-              className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow"
+              className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6 hover:shadow-md transition-shadow"
             >
-              <div className="flex items-start justify-between">
-                <div className="flex items-start space-x-4 flex-1">
+              <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
+                <div className="flex items-start space-x-3 sm:space-x-4 flex-1 w-full min-w-0">
                   <div
-                    className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0"
+                    className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center flex-shrink-0"
                     style={{ backgroundColor: event.color }}
                   >
-                    <Clock className="w-6 h-6 text-white" />
+                    <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                   </div>
                   
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-1">{event.name}</h3>
+                    <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1 truncate">{event.name}</h3>
                     {event.description && (
-                      <p className="text-gray-600 mb-2">{event.description}</p>
+                      <p className="text-sm sm:text-base text-gray-600 mb-2 line-clamp-2">{event.description}</p>
                     )}
-                    <div className="flex items-center text-sm text-gray-500">
-                      <Clock className="w-4 h-4 mr-1" />
+                    <div className="flex items-center text-xs sm:text-sm text-gray-500">
+                      <Clock className="w-3 h-3 sm:w-4 sm:h-4 mr-1 flex-shrink-0" />
                       <span>{event.duration} min</span>
                     </div>
-                    <div className="mt-3 flex items-center space-x-2">
-                      <code className="text-xs bg-gray-100 px-2 py-1 rounded">
+                    <div className="mt-2 sm:mt-3 flex flex-wrap items-center gap-1 sm:gap-2">
+                      <code className="text-[10px] sm:text-xs bg-gray-100 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded truncate max-w-[200px] sm:max-w-none">
                         {window.location.origin}/{event.slug}
                       </code>
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => copyLink(event.slug)}
-                        className="h-6 px-2"
+                        className="h-5 sm:h-6 px-1.5 sm:px-2"
                       >
                         <Copy className="w-3 h-3" />
                       </Button>
@@ -283,7 +286,7 @@ export default function HomePage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => window.open(`/${event.slug}`, '_blank')}
-                        className="h-6 px-2"
+                        className="h-5 sm:h-6 px-1.5 sm:px-2"
                       >
                         <ExternalLink className="w-3 h-3" />
                       </Button>
@@ -291,21 +294,24 @@ export default function HomePage() {
                   </div>
                 </div>
                 
-                <div className="flex items-center space-x-2">
+                <div className="flex sm:flex-col items-center sm:items-stretch gap-2 w-full sm:w-auto">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => handleEdit(event)}
+                    className="flex-1 sm:flex-none text-xs sm:text-sm h-8 sm:h-9"
                   >
-                    <Edit2 className="w-4 h-4" />
+                    <Edit2 className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-0" />
+                    <span className="sm:hidden ml-2">Edit</span>
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => handleDelete(event.id)}
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    className="flex-1 sm:flex-none text-red-600 hover:text-red-700 hover:bg-red-50 text-xs sm:text-sm h-8 sm:h-9"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-0" />
+                    <span className="sm:hidden ml-2">Delete</span>
                   </Button>
                 </div>
               </div>
