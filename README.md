@@ -1,37 +1,53 @@
 
+
 ````
 # 📅 Calendly Clone
 
-A full-stack, production-ready scheduling and booking application that replicates the core functionality of Calendly. Built with **Next.js 14**, **Express.js**, **Supabase (PostgreSQL)**, and **Gmail SMTP**.
+A full-stack, production-ready scheduling and booking application that replicates the core functionality of Calendly. Built with **Next.js 14**, **Express.js**, **Supabase (PostgreSQL)**, and **Brevo Email API**.
 
-This project features a modern, responsive UI, real-time availability management, and a robust **fire-and-forget email notification system** designed for an optimal user experience.
+This project features a modern, fully responsive UI, real-time availability management, and a robust **fire-and-forget email notification system** designed for production reliability.
 
 ---
 
 ## 🌟 Key Features
 
 ### Core Functionality
-- ✅ **Event Types Management:** Create, edit, and delete meeting types (e.g., *15 Min Chat*, *30 Min Chat*) with custom colors and unique URLs.
-- ✅ **Smart Availability:** Configure weekly schedules with precise time slots. The system automatically calculates available slots.
-- ✅ **Public Booking Page:** A beautiful, responsive calendar interface for invitees to book meetings.
-- ✅ **Instant Notifications:** Automated email confirmations sent via **Gmail SMTP (Nodemailer)** to both host and invitee.
-- ✅ **Non-Blocking UX:** Optimized backend logic ensures users see the success screen instantly while emails process in the background.
+- ✅ **Event Types Management:** Create, edit, and delete meeting types (e.g., *15 Min Chat*, *30 Min Chat*) with custom colors and unique public URLs.
+- ✅ **Smart Availability:** Configure weekly schedules with precise time slots. Available slots are auto-calculated based on rules and existing bookings.
+- ✅ **Public Booking Page:** A clean, responsive booking interface for invitees.
+- ✅ **Instant Email Notifications:** Booking confirmation and cancellation emails sent via **Brevo Email API**.
+- ✅ **Non-Blocking UX:** Backend sends emails asynchronously so users see success screens instantly.
 
 ### Bonus Features
-- 🎨 **Dynamic Dashboard:** View upcoming and past meetings with status tracking.
-- ⚡ **Meeting Cancellation:** Users can cancel meetings, triggering automatic update emails.
-- 🛡️ **Conflict Prevention:** Real-time validation to prevent double bookings.
+- 🎨 **Responsive Dashboard:** Works seamlessly across desktop, tablet, and mobile.
+- ⚡ **Meeting Cancellation:** Invitees can cancel meetings and automatically receive update emails.
+- 🛡️ **Conflict Prevention:** Real-time validation prevents double bookings.
+- 🌍 **Timezone-Aware Scheduling:** Accurate scheduling across different timezones.
 
 ---
 
 ## 🛠️ Tech Stack
 
-- **Frontend:** Next.js 14 (App Router), React, TypeScript, Tailwind CSS
-- **UI Components:** shadcn/ui, Lucide Icons
-- **Backend:** Node.js, Express.js (REST API)
-- **Database:** Supabase (Managed PostgreSQL)
-- **Email Service:** Nodemailer (Gmail SMTP)
-- **Deployment:** Vercel (Frontend) + Render (Backend)
+### Frontend
+- **Next.js 14 (App Router)**
+- **React + TypeScript**
+- **Tailwind CSS**
+- **shadcn/ui**
+- **Lucide Icons**
+
+### Backend
+- **Node.js**
+- **Express.js (REST API)**
+
+### Database
+- **Supabase (PostgreSQL)**
+
+### Email Service
+- **Brevo Email API (HTTP-based, production-safe)**
+
+### Deployment
+- **Vercel** → Frontend  
+- **Render** → Backend (Express API)
 
 ---
 
@@ -44,10 +60,10 @@ calendly-clone/
 │   ├── [slug]/                 # Public Booking Page (Dynamic Route)
 │   ├── availability/           # Availability Settings
 │   └── meetings/               # Scheduled Meetings List
-├── components/                 # React Components
-│   └── ui/                     # shadcn/ui primitives (Button, Card, etc.)
+├── components/                 # Reusable React Components
+│   └── ui/                     # shadcn/ui primitives
 ├── server.js                   # Express Backend Entry Point
-├── schema.sql                  # Database Schema
+├── schema.sql                  # Supabase Database Schema
 └── .env.local                  # Environment Variables
 ````
 
@@ -57,9 +73,9 @@ calendly-clone/
 
 ### Prerequisites
 
-* Node.js **18+**
-* A **Supabase** account (Free tier)
-* A **Gmail** account (for sending emails)
+* **Node.js 18+**
+* **Supabase account** (Free tier is sufficient)
+* **Brevo account** (Free tier for transactional emails)
 
 ---
 
@@ -69,7 +85,6 @@ calendly-clone/
 git clone https://github.com/YOUR_USERNAME/calendly-clone.git
 cd calendly-clone
 
-# Install dependencies
 npm install
 ```
 
@@ -84,9 +99,8 @@ Create a `.env.local` file in the root directory:
 SUPABASE_URL=your_supabase_project_url
 SUPABASE_KEY=your_supabase_anon_key
 
-# --- Email Configuration (Gmail) ---
-GMAIL_USER=your_email@gmail.com
-GMAIL_PASS=your_16_char_app_password
+# --- Email Configuration (Brevo API) ---
+BREVO_API_KEY=your_brevo_api_key
 
 # --- App Configuration ---
 NEXT_PUBLIC_API_URL=http://localhost:5000/api
@@ -97,9 +111,9 @@ PORT=5000
 
 ### 3. Database Setup (Supabase)
 
-1. Go to your **Supabase Project → SQL Editor**
-2. Copy the contents of `schema.sql` from this repository
-3. Run the query to create the required tables:
+1. Go to **Supabase Dashboard → SQL Editor**
+2. Copy the contents of `schema.sql`
+3. Run the script to create tables:
 
    * `users`
    * `event_types`
@@ -110,7 +124,7 @@ PORT=5000
 
 ### 4. Run the Application
 
-You must run the backend and frontend **simultaneously**.
+You must run the backend and frontend simultaneously.
 
 #### Terminal 1 — Backend
 
@@ -132,9 +146,7 @@ Frontend runs on: `http://localhost:3000`
 
 ## 🌐 Deployment Guide (Split Stack)
 
-This project uses a **split deployment strategy** for performance and scalability.
-
-### 1. Backend Deployment (Render)
+### Backend Deployment (Render)
 
 1. Create a **Web Service** on Render
 2. Connect your GitHub repository
@@ -142,22 +154,23 @@ This project uses a **split deployment strategy** for performance and scalabilit
 
    * **Build Command:** `npm install`
    * **Start Command:** `node server.js`
-4. Add Environment Variables:
+4. Add environment variables:
 
    * `SUPABASE_URL`
    * `SUPABASE_KEY`
-   * `GMAIL_USER`
-   * `GMAIL_PASS`
+   * `BREVO_API_KEY`
+
+> ⚠️ Render free tier may sleep after inactivity (cold starts).
 
 ---
 
-### 2. Frontend Deployment (Vercel)
+### Frontend Deployment (Vercel)
 
 1. Import the repository into Vercel
-2. Add Environment Variable:
+2. Add environment variable:
 
    ```env
-   NEXT_PUBLIC_API_URL=https://your-app.onrender.com/api
+   NEXT_PUBLIC_API_URL=https://your-render-app.onrender.com/api
    ```
 3. Deploy 🎉
 
@@ -169,33 +182,39 @@ This project uses a **split deployment strategy** for performance and scalabilit
 | ------ | ------------------------------- | ------------------------------ |
 | GET    | `/api/event-types`              | List all event types           |
 | GET    | `/api/availability/:slug/:date` | Get available slots for a date |
-| POST   | `/api/bookings`                 | Create booking & trigger email |
-| PATCH  | `/api/bookings/:id/cancel`      | Cancel a booking               |
+| POST   | `/api/bookings`                 | Create booking & send email    |
+| PATCH  | `/api/bookings/:id/cancel`      | Cancel booking & notify user   |
 | GET    | `/api/health`                   | Backend health check           |
 
 ---
 
 ## 🧪 Testing the Flow
 
-1. **Create an Event:** Create a "30 Min Meeting" from the dashboard
-2. **Set Availability:** Configure working hours (e.g., 9 AM – 5 PM)
-3. **Book a Slot:** Open the public booking link and select a time
-4. **Observe:** Success page loads instantly (non-blocking email logic)
-5. **Verify Email:** Both host and invitee receive confirmation emails
+1. Create an event type from the dashboard
+2. Configure weekly availability
+3. Open the public booking link
+4. Book a meeting
+5. Receive a confirmation email
+6. Cancel the meeting and receive a cancellation email
 
 ---
 
 ## 🐛 Troubleshooting
 
-* **Email Timeout Errors:**
-  Ensure `GMAIL_PASS` is a **Gmail App Password**, not your Gmail login password.
-  Also verify SMTP port **587** is used.
+### Render Cold Starts
 
-* **Render Cold Starts:**
-  Free-tier services may take **30–50 seconds** to wake up.
+* Free-tier backend may take **30–60 seconds** to wake up.
+* First request after inactivity can feel slow.
 
-* **CORS Errors:**
-  Ensure backend CORS configuration allows your frontend domain.
+### Frontend Loading Forever
+
+* Ensure `NEXT_PUBLIC_API_URL` is correct.
+* Check `/api/health` endpoint directly.
+
+### Email Issues
+
+* Ensure sender email is verified in Brevo.
+* Confirm `BREVO_API_KEY` is set correctly.
 
 ---
 
@@ -204,13 +223,14 @@ This project uses a **split deployment strategy** for performance and scalabilit
 * [ ] Google Calendar 2-way sync
 * [ ] Payment integration (Stripe)
 * [ ] Team scheduling (Round-robin)
-* [ ] SMS notifications
+* [ ] SMS / WhatsApp notifications
+* [ ] Admin analytics dashboard
 
 ---
 
 ## 📝 License
 
-This project is for **educational purposes only**.
+This project is for **educational and portfolio purposes only**.
 
 ---
 
@@ -220,3 +240,4 @@ This project is for **educational purposes only**.
 * UI components by **shadcn/ui**
 * Icons by **Lucide React**
 
+```
