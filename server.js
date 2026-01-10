@@ -616,16 +616,29 @@ app.get('/api/availability/:slug/:date', async (req, res) => {
     const startOfDayUTC = moment.tz(date, ownerTimezone).startOf('day').utc().toISOString();
     const endOfDayUTC = moment.tz(date, ownerTimezone).endOf('day').utc().toISOString();
 
+    // ✅ Get all event types of this owner (same calendar)
+    const { data: allEventTypes, error: allEventTypesError } = await supabase
+      .from('event_types')
+      .select('id')
+      .eq('user_id', eventType.user_id)
+      .eq('is_active', true);
+
+    if (allEventTypesError) throw allEventTypesError;
+
+    const allEventTypeIds = (allEventTypes || []).map((e) => e.id);
+
+    // ✅ Fetch bookings of owner for this day (across all event types)
     const { data: bookings, error: bookingErr } = await supabase
       .from('bookings')
       .select('start_time, end_time')
-      .eq('event_type_id', eventType.id)
+      .in('event_type_id', allEventTypeIds)
       .eq('status', 'confirmed')
       .gte('start_time', startOfDayUTC)
       .lte('start_time', endOfDayUTC);
 
     if (bookingErr) throw bookingErr;
 
+    
     const slots = generateTimeSlots(
       date,
       rules || [],
@@ -653,17 +666,46 @@ app.post('/api/bookings', async (req, res) => {
   try {
     const { eventTypeId, inviteeName, inviteeEmail, inviteeTimezone, startTime, endTime } = req.body;
 
-    // Check if slot is still available
-    const { data: existing } = await supabase
-      .from('bookings')
+    // ✅ Find owner of this event type
+    const { data: currentEventType, error: currentEventTypeError } = await supabase
+      .from('event_types')
+      .select('user_id')
+      .eq('id', eventTypeId)
+      .single();
+
+    if (currentEventTypeError) throw currentEventTypeError;
+
+    const userId = currentEventType.user_id;
+
+    // ✅ Get all event types of this owner
+    const { data: allEventTypes, error: allEventTypesError } = await supabase
+      .from('event_types')
       .select('id')
-      .eq('event_type_id', eventTypeId)
-      .eq('start_time', startTime)
-      .eq('status', 'confirmed');
+      .eq('user_id', userId)
+      .eq('is_active', true);
+
+    if (allEventTypesError) throw allEventTypesError;
+
+    const allEventTypeIds = (allEventTypes || []).map((e) => e.id);
+
+    // ✅ Overlap check across ALL event types of owner (this is the real fix)
+    const { data: existing, error: existingError } = await supabase
+      .from('bookings')
+      .select('id, start_time, end_time')
+      .in('event_type_id', allEventTypeIds)
+      .eq('status', 'confirmed')
+      .lt('start_time', endTime)   // existingStart < newEnd
+      .gt('end_time', startTime);  // existingEnd > newStart
+
+    if (existingError) throw existingError;
 
     if (existing && existing.length > 0) {
-      return res.status(400).json({ error: 'This time slot is no longer available' });
+      return res.status(400).json({
+        error: 'This time slot conflicts with an existing booking'
+      });
     }
+
+
 
     // 1. Insert Booking
     const { data, error } = await supabase
@@ -733,8 +775,8 @@ app.get('/api/bookings', async (req, res) => {
         event_types!inner(name, duration, color, user_id)
       `)
       .eq('event_types.user_id', userId);
-    
-    const now = new Date().toISOString();  
+
+    const now = new Date().toISOString();
 
     if (type === 'upcoming') {
       query = query
@@ -743,8 +785,8 @@ app.get('/api/bookings', async (req, res) => {
         .order('start_time', { ascending: true });
     } else {
       query = query
-      .or(`start_time.lt.${now},status.eq.cancelled`)
-      .order('start_time', { ascending: false });
+        .or(`start_time.lt.${now},status.eq.cancelled`)
+        .order('start_time', { ascending: false });
     }
 
     const { data, error } = await query;
