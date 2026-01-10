@@ -5,7 +5,6 @@ const express = require('express');
 const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
 const moment = require('moment-timezone');
-const nodemailer = require('nodemailer'); // 🆕 Switched to Nodemailer
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -25,18 +24,14 @@ async function sendBookingConfirmation(booking, eventType) {
   }
 
   try {
-    const startDate = new Date(booking.start_time);
-    const formattedDate = startDate.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-    const formattedTime = startDate.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    });
+    const inviteeTimezone = booking.invitee_timezone || 'UTC';
+
+    const startMoment = moment.utc(booking.start_time).tz(inviteeTimezone);
+    const endMoment = moment.utc(booking.end_time).tz(inviteeTimezone);
+
+    const formattedDate = startMoment.format('dddd, MMMM D, YYYY');
+    const formattedTime = `${startMoment.format('h:mm A')} - ${endMoment.format('h:mm A')} (${startMoment.format('z')})`;
+
 
     await axios.post(
       'https://api.brevo.com/v3/smtp/email',
@@ -150,13 +145,12 @@ async function sendCancellationEmail(booking, eventType, reason) {
   }
 
   try {
-    const startDate = new Date(booking.start_time);
-    const formattedDate = startDate.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
+    const inviteeTimezone = booking.invitee_timezone || 'UTC';
+
+    const startMoment = moment.utc(booking.start_time).tz(inviteeTimezone);
+
+    const formattedDate = startMoment.format('dddd, MMMM D, YYYY');
+
 
     await axios.post(
       'https://api.brevo.com/v3/smtp/email',
@@ -207,15 +201,14 @@ async function sendCancellationEmail(booking, eventType, reason) {
                               📅 <strong>Date:</strong> ${formattedDate}
                             </td>
                           </tr>
-                          ${
-                            reason
-                              ? `<tr>
+                          ${reason
+            ? `<tr>
                                   <td style="padding:8px 0;">
                                     📝 <strong>Reason:</strong> ${reason}
                                   </td>
                                 </tr>`
-                              : ''
-                          }
+            : ''
+          }
                         </table>
 
                         <p style="margin-top:20px;font-size:15px;">
@@ -296,43 +289,64 @@ app.use(cors());
 app.use(express.json());
 
 // Helper function to generate time slots
-const generateTimeSlots = (date, rules, duration, bookedSlots, timezone, bufferBefore = 0, bufferAfter = 0) => {
+const generateTimeSlots = (
+  date,
+  rules,
+  duration,
+  bookedSlots,
+  ownerTimezone,
+  inviteeTimezone,
+  bufferBefore = 0,
+  bufferAfter = 0
+) => {
   const slots = [];
-  const dayOfWeek = moment.tz(date, timezone).day();
 
-  const dayRules = rules.filter(r => r.day_of_week === dayOfWeek);
+  // Day should be decided in OWNER timezone
+  const dayOfWeek = moment.tz(date, ownerTimezone).day();
 
-  dayRules.forEach(rule => {
-    const startTime = moment.tz(`${date} ${rule.start_time}`, timezone);
-    const endTime = moment.tz(`${date} ${rule.end_time}`, timezone);
+  const dayRules = rules.filter((r) => r.day_of_week === dayOfWeek);
+
+  dayRules.forEach((rule) => {
+    // Create time in OWNER timezone
+    const startTime = moment.tz(`${date} ${rule.start_time}`, ownerTimezone);
+    const endTime = moment.tz(`${date} ${rule.end_time}`, ownerTimezone);
 
     let current = startTime.clone();
 
-    while (current.clone().add(duration, 'minutes').isSameOrBefore(endTime)) {
-      const slotStart = current.clone();
-      const slotEnd = current.clone().add(duration, 'minutes');
+    while (current.clone().add(duration, "minutes").isSameOrBefore(endTime)) {
+      const slotStartOwner = current.clone();
+      const slotEndOwner = current.clone().add(duration, "minutes");
 
-      const isBooked = bookedSlots.some(booking => {
-        const bookingStart = moment(booking.start_time).subtract(bufferBefore, 'minutes');
-        const bookingEnd = moment(booking.end_time).add(bufferAfter, 'minutes');
+      // Compare bookings in UTC (IMPORTANT)
+      const slotStartUTC = slotStartOwner.clone().utc();
+      const slotEndUTC = slotEndOwner.clone().utc();
 
-        return slotStart.isBefore(bookingEnd) && slotEnd.isAfter(bookingStart);
+      const isBooked = bookedSlots.some((booking) => {
+        const bookingStart = moment.utc(booking.start_time).subtract(bufferBefore, "minutes");
+        const bookingEnd = moment.utc(booking.end_time).add(bufferAfter, "minutes");
+
+        return slotStartUTC.isBefore(bookingEnd) && slotEndUTC.isAfter(bookingStart);
       });
 
-      if (!isBooked && slotStart.isAfter(moment())) {
+      // Only show future slots (based on UTC for correctness)
+      if (!isBooked && slotStartUTC.isAfter(moment.utc())) {
+        // Convert to invitee timezone for UI display
+        const slotInInvitee = slotStartOwner.clone().tz(inviteeTimezone);
+
         slots.push({
-          start: slotStart.toISOString(),
-          end: slotEnd.toISOString(),
-          display: slotStart.format('h:mm A')
+          start: slotStartUTC.toISOString(), // ✅ UTC stored
+          end: slotEndUTC.toISOString(),     // ✅ UTC stored
+          display: slotInInvitee.format("h:mm A"), // ✅ shown in invitee TZ
         });
       }
 
-      current.add(15, 'minutes');
+      current.add(15, "minutes");
     }
   });
 
   return slots;
 };
+
 
 // ==================== EVENT TYPES ROUTES ====================
 
@@ -551,8 +565,11 @@ app.put('/api/availability', async (req, res) => {
 app.get('/api/availability/:slug/:date', async (req, res) => {
   try {
     const { slug, date } = req.params;
-    const { timezone = 'UTC' } = req.query;
 
+    // Invitee timezone from query
+    const inviteeTimezone = req.query.timezone || 'UTC';
+
+    // Get event type
     const { data: eventType, error: eventError } = await supabase
       .from('event_types')
       .select('*')
@@ -561,48 +578,76 @@ app.get('/api/availability/:slug/:date', async (req, res) => {
       .single();
 
     if (eventError) throw eventError;
-    if (!eventType) {
-      return res.status(404).json({ error: 'Event type not found' });
-    }
+    if (!eventType) return res.status(404).json({ error: 'Event type not found' });
 
-    // Get availability rules
-    const { data: scheduleLinks } = await supabase
+    // Get schedule links
+    const { data: scheduleLinks, error: scheduleLinkError } = await supabase
       .from('event_type_schedules')
       .select('schedule_id')
       .eq('event_type_id', eventType.id);
 
-    const scheduleIds = scheduleLinks.map(link => link.schedule_id);
+    if (scheduleLinkError) throw scheduleLinkError;
 
-    const { data: rules } = await supabase
+    const scheduleIds = (scheduleLinks || []).map(link => link.schedule_id);
+
+    if (scheduleIds.length === 0) {
+      return res.json({ slots: [] });
+    }
+
+    // ✅ Fetch owner's timezone from schedule
+    const { data: schedules, error: scheduleErr } = await supabase
+      .from('availability_schedules')
+      .select('id, timezone')
+      .in('id', scheduleIds);
+
+    if (scheduleErr) throw scheduleErr;
+
+    const ownerTimezone = schedules?.[0]?.timezone || 'UTC';
+
+    // Fetch availability rules
+    const { data: rules, error: rulesError } = await supabase
       .from('availability_rules')
       .select('*')
       .in('schedule_id', scheduleIds);
 
-    // Get bookings for the date
-    const { data: bookings } = await supabase
+    if (rulesError) throw rulesError;
+
+    // ✅ Get bookings only for that OWNER date range
+    const startOfDayUTC = moment.tz(date, ownerTimezone).startOf('day').utc().toISOString();
+    const endOfDayUTC = moment.tz(date, ownerTimezone).endOf('day').utc().toISOString();
+
+    const { data: bookings, error: bookingErr } = await supabase
       .from('bookings')
       .select('start_time, end_time')
       .eq('event_type_id', eventType.id)
-      .gte('start_time', `${date}T00:00:00`)
-      .lt('start_time', `${date}T23:59:59`)
-      .eq('status', 'confirmed');
+      .eq('status', 'confirmed')
+      .gte('start_time', startOfDayUTC)
+      .lte('start_time', endOfDayUTC);
+
+    if (bookingErr) throw bookingErr;
 
     const slots = generateTimeSlots(
       date,
       rules || [],
       eventType.duration,
       bookings || [],
-      timezone,
+      ownerTimezone,
+      inviteeTimezone,
       eventType.buffer_before || 0,
       eventType.buffer_after || 0
     );
 
-    res.json({ slots });
+    res.json({
+      slots,
+      ownerTimezone,
+      inviteeTimezone
+    });
   } catch (err) {
-    console.error(err);
+    console.error("❌ Availability Error:", err);
     res.status(500).json({ error: 'Server error' });
   }
 });
+
 
 app.post('/api/bookings', async (req, res) => {
   try {
@@ -666,6 +711,21 @@ app.get('/api/bookings', async (req, res) => {
     const { type = 'upcoming' } = req.query;
     const userId = 1;
 
+    // ✅ Owner timezone (from default schedule)
+    const { data: ownerSchedule, error: ownerScheduleError } = await supabase
+      .from('availability_schedules')
+      .select('timezone')
+      .eq('user_id', userId)
+      .eq('is_default', true)
+      .single();
+
+    if (ownerScheduleError) {
+      console.log("⚠️ Could not fetch owner timezone, using UTC");
+    }
+
+    const ownerTimezone = ownerSchedule?.timezone || 'UTC';
+
+
     let query = supabase
       .from('bookings')
       .select(`
@@ -673,14 +733,18 @@ app.get('/api/bookings', async (req, res) => {
         event_types!inner(name, duration, color, user_id)
       `)
       .eq('event_types.user_id', userId);
+    
+    const now = new Date().toISOString();  
 
     if (type === 'upcoming') {
       query = query
-        .gte('start_time', new Date().toISOString())
+        .gte('start_time', now)
         .eq('status', 'confirmed')
         .order('start_time', { ascending: true });
     } else {
-      query = query.order('start_time', { ascending: false });
+      query = query
+      .or(`start_time.lt.${now},status.eq.cancelled`)
+      .order('start_time', { ascending: false });
     }
 
     const { data, error } = await query;
@@ -695,7 +759,11 @@ app.get('/api/bookings', async (req, res) => {
       color: booking.event_types.color
     }));
 
-    res.json(transformed);
+    res.json({
+      ownerTimezone,
+      meetings: transformed
+    });
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });
@@ -742,8 +810,8 @@ app.patch('/api/bookings/:id/cancel', async (req, res) => {
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
-    mail: 'brevo-smtp',
-    env: !!process.env.BREVO_SMTP_KEY,
+    mail: 'brevo-api',
+    env: !!process.env.BREVO_API_KEY,
   });
 });
 

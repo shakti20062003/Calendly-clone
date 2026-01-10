@@ -103,6 +103,8 @@ export default function BookingPage() {
     }
   };
 
+  console.log("Selected Slot:", selectedSlot);
+
   const getDaysInMonth = () => {
     const start = startOfMonth(currentMonth);
     const end = endOfMonth(currentMonth);
